@@ -8,12 +8,14 @@ Current ClojureScript version and libraries we use are in [project.clj](https://
 ### Notable JS dependencies
 
 * [CodeMirror](http://codemirror.org/) for the editor
-* [Mousetrap](https://github.com/LightTable/LightTable/blob/686c9b1e5e24fcb08ff44eb57eb7889e31e37806/deploy/core/node_modules/lighttable/util/keyevents.js) for handling keyboard shortcuts
+* [Mousetrap](https://github.com/LightTable/LightTable/blob/686c9b1e5e24fcb08ff44eb57eb7889e31e37806/deploy/core/node_modules/lighttable/util/keyevents.js) for handling keyboard shortcuts. The main deviation introduced is the ability to handle chords and sequences... sections added or changed are wrapped with comments indicating so. The fork is located at [LightTable/mousetrap](https://github.com/LightTable/mousetrap).
 * [jQuery throttle/debounce plugin](https://github.com/LightTable/LightTable/blob/686c9b1e5e24fcb08ff44eb57eb7889e31e37806/deploy/core/node_modules/lighttable/util/throttle.js)
 
 ### Node packages
 
 Node package installs last done with node.js v2.5.0 and npm v2.13.2.
+
+If you *remove* a Node package make sure to document that in the release notes, broadcast the change in the Gitter room, and post a topic about it in the Google Groups group. Plugins, including user plugins (i.e. plugins not listed in the official plugin list), might be using a package without including it in its own project.
 
 Node dependencies are at deploy/core/node\_modules/. This directory is currently a mix of vendored
 dependencies, forked dependencies and Light Table specific libraries:
@@ -37,12 +39,17 @@ Allows us to build cross platfrom desktop apps. See [Electron guide](electron-gu
 
 ## Other
 
+### Running Light Table Code in Light Table
+
+Generally, and unless you know what you're doing, do *not* eval entire files of the Light Table source; eval individual forms.
+
+As Gabriel explains in [this comment](https://github.com/LightTable/LightTable/issues/2170#issuecomment-201835808) in [issue #2170](https://github.com/LightTable/LightTable/issues/2170):
+
+> Depending on the file you're re-evaling, a whole file re-eval often redefines core LT object types and recreates LT objects. This can have dire consequences in some files e.g. re-evaling object.cljs will freeze LT as LT no longer has any objects defined. In the case of editor.cljs, if you comment the editor object type and do a file re-eval, you don't see errors. My suggestion is to stick to evaling forms when exploring LT and only do a file eval as you learn more of the codebase and understand the implications of a given file eval. I can add a brief description about this in the wiki or doc/for-committers.md if you think that'd be helpful to others.
+
 ### Code Conventions
 
-* Catch blocks should catch on `:default` unless there is a specific exception to be caught.
-* Catch blocks should log errors with `lt.objs.console/error`. Namespaces that the console
-  ns depend on cannot refer to the clojure var but can refer to the js fn e.g.
-  `(js/lt.objs.console.error err)`.
+* See the LightTable Style Guide.
 
 ### Code Reading
 
@@ -63,14 +70,18 @@ This background thread is invoked with the `background` macro.
 
 ## Release process
 
+Pre-release checklist:
+
+ - [ ] Notify users (as described above in the *Node packages* section) if any Node.js packages have been removed as plugins may depend on them
+
 This is our release checklist which can be dropped in to an issue:
 
 - [ ] Release 0.X.X
       - [ ] Version updates
-         - [ ] Update deploy/core/package.json, deploy/core/version.json and project.clj (including the Codox `:source-uri` value) to 0.X.X
+         - [ ] Update deploy/core/package.json, deploy/core/version.json and project.clj to 0.X.X
          - [ ] Make sure electron version is up to date in version.json
          - [ ] Make sure plugin versions in script/build.sh are latest versions
-      - [ ] Add changelog for release to CHANGELOG.md
+      - [ ] Add changelog with notes for release (i.e release notes) to CHANGELOG.md
       - [ ] Each core developer should QA at least one OS using the [QA checklist](https://github.com/LightTable/LightTable/wiki/QA-Checklist)
       - [ ] When QA passes freeze master
       - [ ] Add changelog to [GH release draft](https://github.com/LightTable/LightTable/releases/new)
@@ -82,14 +93,13 @@ This is our release checklist which can be dropped in to an issue:
       - [ ] Update download links on lighttable.com
       - [ ] Mailing list announcement - [example email](https://gist.github.com/cldwalker/3d67153fe1eade2ae3cf)
       - [ ] Optional blog post if a major release
+      - [ ] Inform [Brian Dukes](https://github.com/bdukes) so that he can update the [Chocolatey package](https://chocolatey.org/packages/LightTable)
       - [ ] After release, [build api documentation](#build-api-documentation)
 
-## Build api documentation
+## Build API documentation
 
-To build api documentation for current LT version and publish generated docs:
-
-1. In project.clj make sure that `[:codox :source-uri]` points to current LT version.
-   This step will be removed once [there is upstream support for version in :source-uri](https://github.com/weavejester/codox/issues/107)
-2. Run `script/build-api-docs.sh` on a clean git state. Make sure there are no pending git changes as this script will change git branches and push generated api docs to gh-pages.
+Run `script/build-api-docs.sh` on a clean git state to build API documentation for the current LT version and publish generated docs. Make sure there are no pending git changes as this script will change git branches and push generated API docs to gh-pages.
 
 Expect to see a ton of warnings e.g. `WARNING: Use of undeclared Var cljs.core/seq at line 197`. This will be noise we have to live with until we upgrade ClojureScript.
+
+To build documentation locally for debugging of documentation generation, run `lein with-profile doc codox`. This will create a `codox` directory within the LightTable directory. Do not include in pull requests or commits. Note, the generated documenation will not have styling, and the view source links may be incorrect.
